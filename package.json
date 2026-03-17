@@ -33,7 +33,7 @@
   },
   "build": {
     "appId": "com.clui.app",
-    "productName": "Clui CC",
+    "productName": "clui-cc",
     "directories": {
       "output": "release"
     },
@@ -49,6 +49,7 @@
       "icon": "resources/icons",
       "target": ["AppImage", "deb"],
       "category": "Development",
+      "executableName": "clui-cc",
       "desktop": {
         "Name": "Clui CC",
         "Comment": "Desktop overlay for Claude Code CLI",
