@@ -19,6 +19,7 @@ interface StaticInfo {
   subscriptionType: string | null
   projectPath: string
   homePath: string
+  platform: string
 }
 
 interface State {
@@ -149,6 +150,7 @@ export const useSessionStore = create<State>((set, get) => ({
           subscriptionType: result.auth?.subscriptionType || null,
           projectPath: result.projectPath || '~',
           homePath: result.homePath || '~',
+          platform: result.platform || 'linux',
         },
       })
     } catch {}

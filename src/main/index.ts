@@ -10,6 +10,9 @@ import { log as _log, LOG_FILE, flushLogs } from './logger'
 import { IPC } from '../shared/types'
 import type { RunOptions, NormalizedEvent, EnrichedError } from '../shared/types'
 
+const IS_MAC = process.platform === 'darwin'
+const IS_LINUX = process.platform === 'linux'
+
 const DEBUG_MODE = process.env.CLUI_DEBUG === '1'
 const SPACES_DEBUG = DEBUG_MODE || process.env.CLUI_SPACES_DEBUG === '1'
 
@@ -105,7 +108,7 @@ function createWindow(): void {
     height: PILL_HEIGHT,
     x,
     y,
-    ...(process.platform === 'darwin' ? { type: 'panel' as const } : {}),  // NSPanel — non-activating, joins all spaces
+    ...(IS_MAC ? { type: 'panel' as const } : {}),  // NSPanel — non-activating, joins all spaces (macOS only)
     frame: false,
     transparent: true,
     resizable: false,
@@ -116,7 +119,7 @@ function createWindow(): void {
     roundedCorners: true,
     backgroundColor: '#00000000',
     show: false,
-    icon: join(__dirname, '../../resources/icon.icns'),
+    icon: join(__dirname, IS_MAC ? '../../resources/icon.icns' : '../../resources/icon.png'),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
@@ -126,15 +129,25 @@ function createWindow(): void {
 
   // Belt-and-suspenders: panel already joins all spaces and floats,
   // but explicit flags ensure correct behavior on older Electron builds.
-  mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
-  mainWindow.setAlwaysOnTop(true, 'screen-saver')
+  if (IS_MAC) {
+    mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
+    mainWindow.setAlwaysOnTop(true, 'screen-saver')
+  } else {
+    mainWindow.setVisibleOnAllWorkspaces(true)
+    mainWindow.setAlwaysOnTop(true, 'floating')
+  }
 
   mainWindow.once('ready-to-show', () => {
     mainWindow?.show()
     // Enable OS-level click-through for transparent regions.
     // { forward: true } ensures mousemove events still reach the renderer
     // so it can toggle click-through off when cursor enters interactive UI.
-    mainWindow?.setIgnoreMouseEvents(true, { forward: true })
+    // NOTE: On Linux, { forward: true } is NOT supported — mouse events are
+    // fully ignored with no way to detect hover. So we skip click-through on Linux
+    // and let the compositor handle transparent regions naturally.
+    if (IS_MAC) {
+      mainWindow?.setIgnoreMouseEvents(true, { forward: true })
+    }
     if (process.env.ELECTRON_RENDERER_URL) {
       mainWindow?.webContents.openDevTools({ mode: 'detach' })
     }
@@ -218,8 +231,10 @@ ipcMain.handle(IPC.IS_VISIBLE, () => {
 })
 
 // OS-level click-through toggle — renderer calls this on mousemove
-// to enable clicks on interactive UI while passing through transparent areas
+// to enable clicks on interactive UI while passing through transparent areas.
+// On Linux, forward option is not supported so we skip click-through entirely.
 ipcMain.on(IPC.SET_IGNORE_MOUSE_EVENTS, (event, ignore: boolean, options?: { forward?: boolean }) => {
+  if (IS_LINUX) return
   const win = BrowserWindow.fromWebContents(event.sender)
   if (win && !win.isDestroyed()) {
     win.setIgnoreMouseEvents(ignore, options || {})
@@ -249,7 +264,7 @@ ipcMain.handle(IPC.START, async () => {
     if (raw) mcpServers = raw.split('\n').filter(Boolean)
   } catch {}
 
-  return { version, auth, mcpServers, projectPath: process.cwd(), homePath: require('os').homedir() }
+  return { version, auth, mcpServers, projectPath: process.cwd(), homePath: require('os').homedir(), platform: process.platform }
 })
 
 ipcMain.handle(IPC.CREATE_TAB, () => {
@@ -476,9 +491,9 @@ ipcMain.handle(IPC.SELECT_DIRECTORY, async () => {
   // macOS: activate app so unparented dialog appears on top (not behind other apps).
   // Unparented avoids modal dimming on the transparent overlay.
   // Activation is fine here — user is actively interacting with CLUI.
-  if (process.platform === 'darwin') app.focus()
+  if (IS_MAC) app.focus()
   const options = { properties: ['openDirectory'] as const }
-  const result = process.platform === 'darwin'
+  const result = IS_MAC
     ? await dialog.showOpenDialog(options)
     : await dialog.showOpenDialog(mainWindow, options)
   return result.canceled ? null : result.filePaths[0]
@@ -498,7 +513,7 @@ ipcMain.handle(IPC.OPEN_EXTERNAL, async (_event, url: string) => {
 ipcMain.handle(IPC.ATTACH_FILES, async () => {
   if (!mainWindow) return null
   // macOS: activate app so unparented dialog appears on top
-  if (process.platform === 'darwin') app.focus()
+  if (IS_MAC) app.focus()
   const options = {
     properties: ['openFile', 'multiSelections'],
     filters: [
@@ -507,7 +522,7 @@ ipcMain.handle(IPC.ATTACH_FILES, async () => {
       { name: 'Code', extensions: ['ts', 'tsx', 'js', 'jsx', 'py', 'rs', 'go', 'md', 'json', 'yaml', 'toml'] },
     ],
   }
-  const result = process.platform === 'darwin'
+  const result = IS_MAC
     ? await dialog.showOpenDialog(options)
     : await dialog.showOpenDialog(mainWindow, options)
   if (result.canceled || result.filePaths.length === 0) return null
@@ -565,10 +580,33 @@ ipcMain.handle(IPC.TAKE_SCREENSHOT, async () => {
     const timestamp = Date.now()
     const screenshotPath = join(tmpdir(), `clui-screenshot-${timestamp}.png`)
 
-    execSync(`/usr/sbin/screencapture -i "${screenshotPath}"`, {
-      timeout: 30000,
-      stdio: 'ignore',
-    })
+    if (IS_MAC) {
+      execSync(`/usr/sbin/screencapture -i "${screenshotPath}"`, {
+        timeout: 30000,
+        stdio: 'ignore',
+      })
+    } else if (IS_LINUX) {
+      // Linux: try multiple screenshot tools with interactive selection
+      const linuxTools = [
+        `gnome-screenshot -a -f "${screenshotPath}"`,
+        `scrot -s "${screenshotPath}"`,
+        `import "${screenshotPath}"`,         // ImageMagick
+      ]
+      let captured = false
+      for (const tool of linuxTools) {
+        try {
+          execSync(tool, { timeout: 30000, stdio: 'ignore' })
+          captured = true
+          break
+        } catch {
+          // Tool not available or user cancelled — try next
+        }
+      }
+      if (!captured) {
+        log('Screenshot: no supported Linux screenshot tool found (tried gnome-screenshot, scrot, import)')
+        return null
+      }
+    }
 
     if (!existsSync(screenshotPath)) {
       return null
@@ -645,10 +683,17 @@ ipcMain.handle(IPC.TRANSCRIBE_AUDIO, async (_event, audioBase64: string) => {
 
     // Find whisper-cli (whisper-cpp homebrew) or whisper (python)
     const candidates = [
+      // macOS (Homebrew)
       '/opt/homebrew/bin/whisper-cli',
       '/usr/local/bin/whisper-cli',
       '/opt/homebrew/bin/whisper',
       '/usr/local/bin/whisper',
+      // Linux
+      '/usr/bin/whisper-cli',
+      '/usr/bin/whisper-cpp',
+      '/usr/bin/whisper',
+      '/snap/bin/whisper',
+      // Shared
       join(homedir(), '.local/bin/whisper'),
     ]
 
@@ -658,19 +703,29 @@ ipcMain.handle(IPC.TRANSCRIBE_AUDIO, async (_event, audioBase64: string) => {
     }
 
     if (!whisperBin) {
+      // macOS default shell is zsh; Linux default is bash
+      const shellCmd = IS_MAC
+        ? '/bin/zsh -lc "whence -p whisper-cli"'
+        : '/bin/bash -lc "command -v whisper-cli"'
       try {
-        whisperBin = execSync('/bin/zsh -lc "whence -p whisper-cli"', { encoding: 'utf-8' }).trim()
+        whisperBin = execSync(shellCmd, { encoding: 'utf-8' }).trim()
       } catch {}
     }
     if (!whisperBin) {
+      const shellCmd = IS_MAC
+        ? '/bin/zsh -lc "whence -p whisper"'
+        : '/bin/bash -lc "command -v whisper"'
       try {
-        whisperBin = execSync('/bin/zsh -lc "whence -p whisper"', { encoding: 'utf-8' }).trim()
+        whisperBin = execSync(shellCmd, { encoding: 'utf-8' }).trim()
       } catch {}
     }
 
     if (!whisperBin) {
+      const installHint = IS_MAC
+        ? 'brew install whisper-cpp'
+        : 'sudo apt install whisper-cpp (ou pip install openai-whisper)'
       return {
-        error: 'Whisper not found. Install with: brew install whisper-cpp',
+        error: `Whisper not found. Install with: ${installHint}`,
         transcript: null,
       }
     }
@@ -679,15 +734,26 @@ ipcMain.handle(IPC.TRANSCRIBE_AUDIO, async (_event, audioBase64: string) => {
 
     // Find model file — prefer multilingual (auto-detect language) over .en (English-only)
     const modelCandidates = [
+      // Shared (user-local)
       join(homedir(), '.local/share/whisper/ggml-tiny.bin'),
       join(homedir(), '.local/share/whisper/ggml-base.bin'),
+      // macOS (Homebrew)
       '/opt/homebrew/share/whisper-cpp/models/ggml-tiny.bin',
       '/opt/homebrew/share/whisper-cpp/models/ggml-base.bin',
+      // Linux (system packages)
+      '/usr/share/whisper-cpp/models/ggml-tiny.bin',
+      '/usr/share/whisper-cpp/models/ggml-base.bin',
+      '/usr/local/share/whisper-cpp/models/ggml-tiny.bin',
+      '/usr/local/share/whisper-cpp/models/ggml-base.bin',
       // Fall back to English-only models if multilingual not available
       join(homedir(), '.local/share/whisper/ggml-tiny.en.bin'),
       join(homedir(), '.local/share/whisper/ggml-base.en.bin'),
       '/opt/homebrew/share/whisper-cpp/models/ggml-tiny.en.bin',
       '/opt/homebrew/share/whisper-cpp/models/ggml-base.en.bin',
+      '/usr/share/whisper-cpp/models/ggml-tiny.en.bin',
+      '/usr/share/whisper-cpp/models/ggml-base.en.bin',
+      '/usr/local/share/whisper-cpp/models/ggml-tiny.en.bin',
+      '/usr/local/share/whisper-cpp/models/ggml-base.en.bin',
     ]
 
     let modelPath = ''
@@ -774,7 +840,7 @@ ipcMain.handle(IPC.GET_DIAGNOSTICS, () => {
 })
 
 ipcMain.handle(IPC.OPEN_IN_TERMINAL, (_event, arg: string | null | { sessionId?: string | null; projectPath?: string }) => {
-  const { execFile } = require('child_process')
+  const { execFile, spawn, execSync: execSyncLocal } = require('child_process')
   const claudeBin = 'claude'
 
   // Support both old (string) and new ({ sessionId, projectPath }) calling convention
@@ -787,28 +853,56 @@ ipcMain.handle(IPC.OPEN_IN_TERMINAL, (_event, arg: string | null | { sessionId?:
     projectPath = arg.projectPath && arg.projectPath !== '~' ? arg.projectPath : process.cwd()
   }
 
-  // Escape for AppleScript: double quotes → backslash-escaped, backslashes doubled
-  const projectDir = projectPath.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
-  let cmd: string
-  if (sessionId) {
-    cmd = `cd \\"${projectDir}\\" && ${claudeBin} --resume ${sessionId}`
-  } else {
-    cmd = `cd \\"${projectDir}\\" && ${claudeBin}`
-  }
+  const claudeCmd = sessionId ? `${claudeBin} --resume ${sessionId}` : claudeBin
 
-  const script = `tell application "Terminal"
+  if (IS_MAC) {
+    // macOS: use AppleScript to open Terminal.app
+    const projectDir = projectPath.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
+    const cmd = `cd \\"${projectDir}\\" && ${claudeCmd}`
+
+    const script = `tell application "Terminal"
   activate
   do script "${cmd}"
 end tell`
 
-  try {
-    execFile('/usr/bin/osascript', ['-e', script], (err: Error | null) => {
-      if (err) log(`Failed to open terminal: ${err.message}`)
-      else log(`Opened terminal with: ${cmd}`)
-    })
-    return true
-  } catch (err: unknown) {
-    log(`Failed to open terminal: ${err}`)
+    try {
+      execFile('/usr/bin/osascript', ['-e', script], (err: Error | null) => {
+        if (err) log(`Failed to open terminal: ${err.message}`)
+        else log(`Opened terminal with: ${cmd}`)
+      })
+      return true
+    } catch (err: unknown) {
+      log(`Failed to open terminal: ${err}`)
+      return false
+    }
+  } else {
+    // Linux: detect and open preferred terminal emulator
+    const shellCmd = `cd "${projectPath}" && ${claudeCmd}`
+    const terminals = [
+      { bin: 'x-terminal-emulator', args: ['-e', 'bash', '-c', shellCmd] },
+      { bin: 'gnome-terminal', args: ['--', 'bash', '-c', shellCmd] },
+      { bin: 'konsole', args: ['-e', 'bash', '-c', shellCmd] },
+      { bin: 'xfce4-terminal', args: ['-e', `bash -c '${shellCmd}'`] },
+      { bin: 'xterm', args: ['-e', `bash -c '${shellCmd}'`] },
+    ]
+
+    for (const terminal of terminals) {
+      try {
+        // Check if the terminal binary exists in PATH
+        execSyncLocal(`command -v ${terminal.bin}`, { encoding: 'utf-8', stdio: 'pipe' })
+        const child = spawn(terminal.bin, terminal.args, {
+          detached: true,
+          stdio: 'ignore',
+          cwd: projectPath,
+        })
+        child.unref()
+        log(`Opened Linux terminal (${terminal.bin}) with: ${claudeCmd}`)
+        return true
+      } catch {
+        // Terminal not found — try next
+      }
+    }
+    log('Failed to open terminal: no supported Linux terminal emulator found')
     return false
   }
 })
@@ -851,7 +945,7 @@ app.whenReady().then(() => {
   // macOS: become an accessory app. Accessory apps can have key windows (keyboard works)
   // without deactivating the currently active app (hover preserved in browsers).
   // This is how Spotlight, Alfred, Raycast work.
-  if (process.platform === 'darwin' && app.dock) {
+  if (IS_MAC && app.dock) {
     app.dock.hide()
   }
 
@@ -894,13 +988,29 @@ app.whenReady().then(() => {
   // Fallback: Cmd+Shift+K kept as secondary shortcut
   const registered = globalShortcut.register('Alt+Space', () => toggleWindow('shortcut Alt+Space'))
   if (!registered) {
-    log('Alt+Space shortcut registration failed — macOS input sources may claim it')
+    log('Alt+Space shortcut registration failed — may conflict with OS window manager')
+    if (IS_LINUX) {
+      // Linux fallback: Alt+Space often conflicts with GNOME/KDE window menu
+      const fallback = globalShortcut.register('Super+Shift+Space', () => toggleWindow('shortcut Super+Shift+Space'))
+      if (fallback) {
+        log('Registered Linux fallback shortcut: Super+Shift+Space')
+      } else {
+        log('Super+Shift+Space fallback also failed')
+      }
+    }
   }
   globalShortcut.register('CommandOrControl+Shift+K', () => toggleWindow('shortcut Cmd/Ctrl+Shift+K'))
 
-  const trayIconPath = join(__dirname, '../../resources/trayTemplate.png')
+  const linuxTrayIcon = join(__dirname, '../../resources/tray-icon.png')
+  const trayIconPath = IS_MAC
+    ? join(__dirname, '../../resources/trayTemplate.png')
+    : existsSync(linuxTrayIcon)
+      ? linuxTrayIcon
+      : join(__dirname, '../../resources/icon.png')
   const trayIcon = nativeImage.createFromPath(trayIconPath)
-  trayIcon.setTemplateImage(true)
+  if (IS_MAC) {
+    trayIcon.setTemplateImage(true)  // macOS template images adapt to menu bar theme
+  }
   tray = new Tray(trayIcon)
   tray.setToolTip('Clui CC — Claude Code UI')
   tray.on('click', () => toggleWindow('tray click'))
@@ -921,7 +1031,7 @@ app.on('will-quit', () => {
 })
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
+  if (!IS_MAC) {
     app.quit()
   }
 })

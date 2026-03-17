@@ -4,7 +4,7 @@ import type { RunOptions, NormalizedEvent, HealthReport, EnrichedError, Attachme
 
 export interface CluiAPI {
   // ─── Request-response (renderer → main) ───
-  start(): Promise<{ version: string; auth: { email?: string; subscriptionType?: string; authMethod?: string }; mcpServers: string[]; projectPath: string; homePath: string }>
+  start(): Promise<{ version: string; auth: { email?: string; subscriptionType?: string; authMethod?: string }; mcpServers: string[]; projectPath: string; homePath: string; platform: string }>
   createTab(): Promise<{ tabId: string }>
   prompt(tabId: string, requestId: string, options: RunOptions): Promise<void>
   cancel(requestId: string): Promise<boolean>
