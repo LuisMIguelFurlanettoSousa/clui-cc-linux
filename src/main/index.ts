@@ -113,8 +113,8 @@ function createWindow(): void {
     transparent: true,
     resizable: false,
     movable: true,
-    alwaysOnTop: true,
-    skipTaskbar: true,
+    alwaysOnTop: IS_MAC,  // Linux: normal window behavior, only on top when focused
+    skipTaskbar: IS_MAC,
     hasShadow: false,
     roundedCorners: true,
     backgroundColor: '#00000000',
@@ -132,9 +132,9 @@ function createWindow(): void {
   if (IS_MAC) {
     mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
     mainWindow.setAlwaysOnTop(true, 'screen-saver')
-  } else {
-    mainWindow.setVisibleOnAllWorkspaces(true)
-    mainWindow.setAlwaysOnTop(true, 'floating')
+  } else if (IS_LINUX) {
+    // Linux: normal window — no always-on-top, no all-workspaces
+    // Window only appears on top when user focuses it
   }
 
   mainWindow.once('ready-to-show', () => {
