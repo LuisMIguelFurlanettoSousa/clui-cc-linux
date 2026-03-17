@@ -17,12 +17,6 @@
   <a href="https://github.com/lcoutodemos/clui-cc"><img src="https://img.shields.io/badge/fork%20of-clui--cc-orange" alt="Fork of clui-cc" /></a>
 </p>
 
-## Demo
-
-[![Watch the demo](https://img.youtube.com/vi/NqRBIpaA4Fk/maxresdefault.jpg)](https://www.youtube.com/watch?v=NqRBIpaA4Fk)
-
-<p align="center"><a href="https://www.youtube.com/watch?v=NqRBIpaA4Fk">▶ Watch the full demo on YouTube</a></p>
-
 ## What's Different in This Fork
 
 This is a Linux adaptation of [clui-cc](https://github.com/lcoutodemos/clui-cc) by Lucas Couto. The original project targets macOS only. This fork adds:
