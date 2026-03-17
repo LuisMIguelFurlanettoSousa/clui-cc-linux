@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Clui CC
+Comment=Command Line User Interface for Claude Code
+Exec=clui-cc
+Icon=clui-cc
+Type=Application
+Categories=Development;Utility;
+Terminal=false
+StartupNotify=true
+StartupWMClass=clui
