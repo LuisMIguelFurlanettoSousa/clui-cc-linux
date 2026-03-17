@@ -3,20 +3,23 @@
   "version": "0.1.0",
   "description": "Clui CC — Command Line User Interface for Claude Code",
   "license": "MIT",
+  "author": "Luis Miguel <LuisMIguelFurlanettoSousa@users.noreply.github.com>",
   "repository": {
     "type": "git",
-    "url": "https://github.com/lcoutodemos/clui-cc.git"
+    "url": "https://github.com/LuisMIguelFurlanettoSousa/clui-cc-linux.git"
   },
   "bugs": {
-    "url": "https://github.com/lcoutodemos/clui-cc/issues"
+    "url": "https://github.com/LuisMIguelFurlanettoSousa/clui-cc-linux/issues"
   },
-  "homepage": "https://github.com/lcoutodemos/clui-cc#readme",
+  "homepage": "https://github.com/LuisMIguelFurlanettoSousa/clui-cc-linux#readme",
   "main": "dist/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
     "start:linux": "bash start.sh",
+    "dist": "electron-vite build && electron-builder --linux deb",
+    "dist:appimage": "electron-vite build && electron-builder --linux AppImage",
     "doctor": "bash scripts/doctor.sh",
     "postinstall": "electron-builder install-app-deps && bash scripts/patch-dev-icon.sh"
   },
@@ -31,13 +34,30 @@
   "build": {
     "appId": "com.clui.app",
     "productName": "Clui CC",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "resources/**/*",
+      "package.json"
+    ],
     "mac": {
       "icon": "resources/icon.icns"
     },
     "linux": {
-      "icon": "resources/icon.png",
+      "icon": "resources/icons",
       "target": ["AppImage", "deb"],
-      "category": "Development"
+      "category": "Development",
+      "desktop": {
+        "Name": "Clui CC",
+        "Comment": "Desktop overlay for Claude Code CLI",
+        "Categories": "Development;Utility;"
+      }
+    },
+    "deb": {
+      "depends": ["libnotify4", "libsecret-1-0", "libgtk-3-0"],
+      "afterInstall": "build/after-install.sh"
     }
   },
   "devDependencies": {
