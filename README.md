@@ -5,13 +5,13 @@
 # <p align="center">Clui CC Linux</p>
 
 <p align="center">
-  Desktop overlay for Claude Code CLI — now on Linux.<br/>
+  Desktop overlay for Claude Code CLI on Linux.<br/>
   Float, tab, approve, and prompt without leaving your workflow.
 </p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/build-passing-brightgreen" alt="Build" />
-  <img src="https://img.shields.io/badge/platform-Linux%20%7C%20macOS-blue" alt="Platform" />
+  <img src="https://img.shields.io/badge/platform-Linux-blue" alt="Platform" />
   <img src="https://img.shields.io/badge/electron-33-blue" alt="Electron" />
   <img src="https://img.shields.io/github/license/LuisMIguelFurlanettoSousa/clui-cc-linux" alt="License" />
   <a href="https://github.com/lcoutodemos/clui-cc"><img src="https://img.shields.io/badge/fork%20of-clui--cc-orange" alt="Fork of clui-cc" /></a>
@@ -39,12 +39,9 @@ This is a Linux adaptation of [clui-cc](https://github.com/lcoutodemos/clui-cc) 
 - **Voice input** — local speech-to-text via Whisper (no cloud transcription)
 - **File & screenshot attachments** — paste images or attach files directly
 - **Dark/light theme** — follows system preference
-- **Cross-platform** — runs on Linux and macOS
 - **Auto-detection** — finds your terminal, screenshot tool, and shell automatically
 
 ## Quick Start
-
-**Linux:**
 
 ```bash
 git clone https://github.com/LuisMIguelFurlanettoSousa/clui-cc-linux.git
@@ -52,25 +49,12 @@ cd clui-cc-linux
 ./start.sh
 ```
 
-<details>
-<summary><strong>macOS</strong></summary>
-
-```bash
-git clone https://github.com/LuisMIguelFurlanettoSousa/clui-cc-linux.git
-cd clui-cc-linux
-./start.command
-```
-
-</details>
-
 > Requires **Node.js 18+**, **Python 3**, and **Claude Code CLI**. The start script checks everything and tells you what's missing.
 
-Toggle the overlay: **Alt+Space** (or **Cmd+Shift+K** on macOS as fallback).
+Toggle the overlay: **Alt+Space** (or **Ctrl+Shift+K** as fallback).
 
 <details>
 <summary><strong>Prerequisites</strong></summary>
-
-### Linux
 
 **1.** Install Node.js 18+ (via your package manager or [nvm](https://github.com/nvm-sh/nvm)):
 
@@ -116,43 +100,6 @@ npm install -g @anthropic-ai/claude-code
 ```bash
 claude
 ```
-
-### macOS
-
-<details>
-<summary>Show macOS prerequisites</summary>
-
-**1.** Install Xcode Command Line Tools:
-
-```bash
-xcode-select --install
-```
-
-**2.** Install Node.js 18+ from [nodejs.org](https://nodejs.org) or via Homebrew:
-
-```bash
-brew install node
-```
-
-**3.** Ensure Python has `setuptools`:
-
-```bash
-python3 -m pip install --upgrade pip setuptools
-```
-
-**4.** Install Claude Code CLI:
-
-```bash
-npm install -g @anthropic-ai/claude-code
-```
-
-**5.** Authenticate:
-
-```bash
-claude
-```
-
-</details>
 
 </details>
 
@@ -245,7 +192,7 @@ No telemetry, analytics, or auto-update mechanisms. All Claude Code interaction 
 
 - **Requires Claude Code CLI** — Clui CC is a UI layer, not a standalone AI client. You need an authenticated `claude` CLI.
 - **Transparent click-through not available on Linux** — this is an Electron limitation on X11/Wayland.
-- **Alt+Space may conflict** — some Linux window managers (e.g., KDE, i3) bind `Alt+Space` by default. Remap the WM shortcut or change it in Clui CC settings.
+- **Alt+Space may conflict** — some Linux window managers (e.g., KDE, i3) bind `Alt+Space` by default. Remap the WM shortcut or use `Ctrl+Shift+K`.
 
 ## Troubleshooting
 
