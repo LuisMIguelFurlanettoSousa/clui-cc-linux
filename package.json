@@ -16,6 +16,7 @@
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
+    "start:linux": "bash start.sh",
     "doctor": "bash scripts/doctor.sh",
     "postinstall": "electron-builder install-app-deps && bash scripts/patch-dev-icon.sh"
   },
@@ -32,6 +33,11 @@
     "productName": "Clui CC",
     "mac": {
       "icon": "resources/icon.icns"
+    },
+    "linux": {
+      "icon": "resources/icon.png",
+      "target": ["AppImage", "deb"],
+      "category": "Development"
     }
   },
   "devDependencies": {
