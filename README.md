@@ -1,6 +1,21 @@
-# Clui CC — Command Line User Interface for Claude Code
+<p align="center">
+  <img src="resources/icon.png" width="120" alt="Clui CC Linux logo" />
+</p>
 
-A lightweight, transparent desktop overlay for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) on macOS. Clui CC wraps the Claude Code CLI in a floating pill interface with multi-tab sessions, a permission approval UI, voice input, and a skills marketplace.
+# <p align="center">Clui CC Linux</p>
+
+<p align="center">
+  Desktop overlay for Claude Code CLI — now on Linux.<br/>
+  Float, tab, approve, and prompt without leaving your workflow.
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/build-passing-brightgreen" alt="Build" />
+  <img src="https://img.shields.io/badge/platform-Linux%20%7C%20macOS-blue" alt="Platform" />
+  <img src="https://img.shields.io/badge/electron-33-blue" alt="Electron" />
+  <img src="https://img.shields.io/github/license/LuisMIguelFurlanettoSousa/clui-cc-linux" alt="License" />
+  <a href="https://github.com/lcoutodemos/clui-cc"><img src="https://img.shields.io/badge/fork%20of-clui--cc-orange" alt="Fork of clui-cc" /></a>
+</p>
 
 ## Demo
 
@@ -8,165 +23,155 @@ A lightweight, transparent desktop overlay for [Claude Code](https://docs.anthro
 
 <p align="center"><a href="https://www.youtube.com/watch?v=NqRBIpaA4Fk">▶ Watch the full demo on YouTube</a></p>
 
+## What's Different in This Fork
+
+This is a Linux adaptation of [clui-cc](https://github.com/lcoutodemos/clui-cc) by Lucas Couto. The original project targets macOS only. This fork adds:
+
+- **Linux support** — tested on Ubuntu 22+, Fedora 38+, and Arch Linux
+- **Screenshot capture** — auto-detects `gnome-screenshot`, `scrot`, or `import` (ImageMagick)
+- **Terminal detection** — opens your default terminal automatically (GNOME Terminal, Konsole, Alacritty, etc.)
+- **Tray icon** — adapted for Linux desktop environments (GNOME, KDE, XFCE)
+- **Desktop integration** — `.desktop` file and Linux-compatible icon set
+- **Python 3.12+ fix** — auto-installs `setuptools` when missing (removed from stdlib in 3.12)
+- **Electron sandbox fix** — handles the `--no-sandbox` requirement on Linux automatically
+
 ## Features
 
-- **Floating overlay** — transparent, click-through window that stays on top. Toggle with `Alt+Space`.
-- **Multi-tab sessions** — each tab spawns its own `claude -p` process with independent session state.
-- **Permission approval UI** — intercepts tool calls via PreToolUse HTTP hooks so you can review and approve/deny from the UI.
-- **Conversation history** — browse and resume past Claude Code sessions.
-- **Skills marketplace** — install plugins from Anthropic's GitHub repos without leaving Clui CC.
-- **Voice input** — local speech-to-text via Whisper (no cloud transcription).
-- **File & screenshot attachments** — paste images or attach files directly.
-- **Dual theme** — dark/light mode with system-follow option.
+- **Floating overlay** — transparent, always-on-top window. Toggle with `Alt+Space`
+- **Multi-tab sessions** — each tab spawns its own `claude -p` process with independent session state
+- **Permission approval UI** — review and approve/deny tool calls in-app before execution
+- **Conversation history** — browse and resume past Claude Code sessions
+- **Skills marketplace** — install plugins from Anthropic's GitHub repos without leaving the app
+- **Voice input** — local speech-to-text via Whisper (no cloud transcription)
+- **File & screenshot attachments** — paste images or attach files directly
+- **Dark/light theme** — follows system preference
+- **Cross-platform** — runs on Linux and macOS
+- **Auto-detection** — finds your terminal, screenshot tool, and shell automatically
 
-## Why Clui CC Is Different
+## Quick Start
 
-- **Claude Code, but visual** — keep CLI power while getting a fast desktop UX for approvals, history, and multitasking.
-- **Human-in-the-loop safety** — tool calls can be reviewed/approved in-app before execution.
-- **Session-native workflow** — each tab runs an independent Claude session you can resume later.
-- **Mostly local-first** — core behavior runs through your local Claude CLI, with minimal network dependency.
-
-## Architecture At a Glance
-
-Clui CC is an Electron app with three layers:
-
-```
-Renderer (React UI) -> Preload bridge -> Main process (ControlPlane/RunManager/PermissionServer)
-```
-
-Flow:
-
-1. UI sends a prompt from a tab.
-2. Main process starts `claude -p` for that tab.
-3. Stream events are normalized and rendered live.
-4. Tool permission requests are intercepted and shown in the approval UI.
-5. Session state is tracked so you can resume work.
-
-See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the full technical deep-dive.
-
-## Quick Start (Recommended)
-
-Run these commands one at a time:
-
-**1) Clone the repo**
+**Linux:**
 
 ```bash
-git clone https://github.com/lcoutodemos/clui-cc.git
+git clone https://github.com/LuisMIguelFurlanettoSousa/clui-cc-linux.git
+cd clui-cc-linux
+./start.sh
 ```
 
-**2) Enter the project folder**
+<details>
+<summary><strong>macOS</strong></summary>
 
 ```bash
-cd clui-cc
-```
-
-**3) Start the app**
-
-```bash
+git clone https://github.com/LuisMIguelFurlanettoSousa/clui-cc-linux.git
+cd clui-cc-linux
 ./start.command
 ```
 
-Optional (install voice dependency automatically first):
+</details>
 
-```bash
-./start.command --with-voice
-```
+> Requires **Node.js 18+**, **Python 3**, and **Claude Code CLI**. The start script checks everything and tells you what's missing.
 
-`start.command` runs environment checks first and prints exact fix commands if something is missing. If checks pass, it installs dependencies, builds, and launches the app.
-
-To close the app:
-
-```bash
-./stop.command
-```
-
-You can also double-click `start.command` and `stop.command` from Finder.
-
-Toggle the overlay: **Alt+Space** (or **Cmd+Shift+K** as fallback).
+Toggle the overlay: **Alt+Space** (or **Cmd+Shift+K** on macOS as fallback).
 
 <details>
-<summary><strong>Setup Prerequisites (Detailed)</strong></summary>
+<summary><strong>Prerequisites</strong></summary>
 
-You need **macOS 13+**. Then install these one at a time — copy each command and paste it into Terminal.
+### Linux
 
-**Step 1.** Install Xcode Command Line Tools (needed to compile native modules):
-
-```bash
-xcode-select --install
-```
-
-**Step 2.** Install Node.js (recommended: current LTS such as 20 or 22; minimum supported: 18). Download from [nodejs.org](https://nodejs.org), or use Homebrew:
+**1.** Install Node.js 18+ (via your package manager or [nvm](https://github.com/nvm-sh/nvm)):
 
 ```bash
-brew install node
+# Ubuntu/Debian
+sudo apt install nodejs npm
+
+# Fedora
+sudo dnf install nodejs npm
+
+# Or via nvm (any distro)
+nvm install --lts
 ```
 
-Verify it's on your PATH:
+**2.** Install Python 3:
 
 ```bash
-node --version
+# Ubuntu/Debian
+sudo apt install python3
+
+# Fedora
+sudo dnf install python3
 ```
 
-**Step 3.** Make sure Python has `setuptools` (needed by the native module compiler). On Python 3.12+ this is missing by default:
+**3.** Install build tools:
 
 ```bash
-python3 -m pip install --upgrade pip setuptools
+# Ubuntu/Debian
+sudo apt install build-essential
+
+# Fedora
+sudo dnf groupinstall "Development Tools"
 ```
 
-**Step 4.** Install Claude Code CLI:
+**4.** Install Claude Code CLI:
 
 ```bash
 npm install -g @anthropic-ai/claude-code
 ```
 
-**Step 5.** Authenticate Claude Code (follow the prompts that appear):
+**5.** Authenticate Claude Code (follow the prompts):
 
 ```bash
 claude
 ```
 
-**Step 6.** Verify Claude Code is working (should print `2.1.x` or higher):
+### macOS
+
+<details>
+<summary>Show macOS prerequisites</summary>
+
+**1.** Install Xcode Command Line Tools:
 
 ```bash
-claude --version
+xcode-select --install
 ```
 
-**Optional:** Install Whisper for voice input:
+**2.** Install Node.js 18+ from [nodejs.org](https://nodejs.org) or via Homebrew:
 
 ```bash
-brew install whisper-cli
+brew install node
 ```
 
-> **No API keys or `.env` file required.** Clui CC uses your existing Claude Code CLI authentication (Pro/Team/Enterprise subscription).
+**3.** Ensure Python has `setuptools`:
+
+```bash
+python3 -m pip install --upgrade pip setuptools
+```
+
+**4.** Install Claude Code CLI:
+
+```bash
+npm install -g @anthropic-ai/claude-code
+```
+
+**5.** Authenticate:
+
+```bash
+claude
+```
+
+</details>
 
 </details>
 
 <details>
-<summary><strong>Development Commands</strong></summary>
-
-### Hot Reload
-
-If you are actively developing:
+<summary><strong>Development</strong></summary>
 
 ```bash
 npm install
+npm run dev    # hot-reload (renderer changes update instantly)
+npm run build  # production build
 ```
 
-```bash
-npm run dev
-```
-
-Renderer changes update instantly. Main-process changes require restarting `npm run dev`.
-
-### Production Build
-
-```bash
-npm run build
-```
-
-```bash
-npx electron .
-```
+Renderer changes update instantly during `dev`. Main-process changes require restarting `npm run dev`.
 
 </details>
 
@@ -189,8 +194,6 @@ Clui CC is an Electron app with three layers:
 │  Marketplace catalog (GitHub raw fetch + cache)   │
 └─────────────────────────────────────────────────┘
 ```
-
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full deep-dive.
 
 ### Project Structure
 
@@ -229,9 +232,26 @@ Clui CC operates almost entirely offline. The only outbound network calls are:
 | `raw.githubusercontent.com/anthropics/*` | Marketplace catalog (cached 5 min) | No — graceful fallback |
 | `api.github.com/repos/anthropics/*/tarball/*` | Skill auto-install on startup | No — skipped on failure |
 
-No telemetry, analytics, or auto-update mechanisms. All core Claude Code interaction goes through the local CLI.
+No telemetry, analytics, or auto-update mechanisms. All Claude Code interaction goes through the local CLI.
 
 </details>
+
+## Tested On
+
+| Component | Version |
+|-----------|---------|
+| Ubuntu | 24.04 LTS |
+| Fedora | 38+ |
+| Node.js | 20.x LTS, 22.x |
+| Python | 3.12 - 3.14 |
+| Electron | 33.x |
+| Claude Code CLI | 2.1.71+ |
+
+## Known Limitations
+
+- **Requires Claude Code CLI** — Clui CC is a UI layer, not a standalone AI client. You need an authenticated `claude` CLI.
+- **Transparent click-through not available on Linux** — this is an Electron limitation on X11/Wayland.
+- **Alt+Space may conflict** — some Linux window managers (e.g., KDE, i3) bind `Alt+Space` by default. Remap the WM shortcut or change it in Clui CC settings.
 
 ## Troubleshooting
 
@@ -243,22 +263,19 @@ Quick self-check:
 npm run doctor
 ```
 
-## Tested On
+## Contributing
 
-| Component | Version |
-|-----------|---------|
-| macOS | 15.x (Sequoia) |
-| Node.js | 20.x LTS, 22.x |
-| Python | 3.12 (with setuptools installed) |
-| Electron | 33.x |
-| Claude Code CLI | 2.1.71 |
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for guidelines.
 
-## Known Limitations
+## Credits
 
-- **macOS only** — transparent overlay, tray icon, and node-pty are macOS-specific. Windows/Linux support is not currently implemented.
-- **Requires Claude Code CLI** — Clui CC is a UI layer, not a standalone AI client. You need an authenticated `claude` CLI.
-- **Permission mode** — uses `--permission-mode default`. The PTY interactive transport is legacy and disabled by default.
+- **Original project** by [Lucas Couto](https://github.com/lcoutodemos/clui-cc)
+- **Linux adaptation** by [Luis Miguel](https://github.com/LuisMIguelFurlanettoSousa)
 
 ## License
 
 [MIT](LICENSE)
+
+---
+
+<p align="center">If you found this useful, give it a ⭐ to help others discover it!</p>
